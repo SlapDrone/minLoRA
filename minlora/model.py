@@ -65,6 +65,21 @@ class LoRAParametrization(nn.Module):
         return cls(fan_in * layer.kernel_size[0] * layer.kernel_size[1], fan_out, device=device, dtype=dtype,
                    fan_in_fan_out=False, rank=rank, lora_dropout_p=lora_dropout_p, lora_alpha=lora_alpha)
 
+
+    @classmethod
+    def from_sparseconv3d(cls, layer, rank=4, lora_dropout_p=0.0, lora_alpha=1, device=None, dtype=None):
+        if device is None:
+            device = layer.weight.device
+        if dtype is None:
+            dtype = layer.weight.dtype
+        
+        out_channels, kx, ky, kz, in_channels = layer.weight.shape
+        fan_in = in_channels * kx * ky * kz
+        fan_out = out_channels
+        
+        return cls(fan_in, fan_out, device=device, dtype=dtype,
+                   fan_in_fan_out=False, rank=rank, lora_dropout_p=lora_dropout_p, lora_alpha=lora_alpha)
+
     @classmethod
     def from_embedding(cls, layer, rank=4, lora_dropout_p=0.0, lora_alpha=1, device=None, dtype=None):
         if device is None:
