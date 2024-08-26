@@ -13,7 +13,7 @@ from torch import nn
 
 
 class LoRAParametrization(nn.Module):
-    def __init__(self, fan_in, fan_out, fan_in_fan_out=False, rank=4, lora_dropout_p=0.0, lora_alpha=1):
+    def __init__(self, fan_in, fan_out, device, dtype, fan_in_fan_out=False, rank=4, lora_dropout_p=0.0, lora_alpha=1):
         super().__init__()
         # if weight is stored as (fan_out, fan_in), the memory layout of A & B follows (W + BA)x
         # otherwise, it's x(W + AB). This allows us to tie the weights between linear layers and embeddings
@@ -44,25 +44,36 @@ class LoRAParametrization(nn.Module):
     def enable_lora(self):
         self.forward_fn = self.lora_forward
 
+
     @classmethod
-    def from_linear(cls, layer, rank=4, lora_dropout_p=0.0, lora_alpha=1):
+    def from_linear(cls, layer, rank=4, lora_dropout_p=0.0, lora_alpha=1, device=None, dtype=None):
+        if device is None:
+            device = layer.weight.device
+        if dtype is None:
+            dtype = layer.weight.dtype
         fan_out, fan_in = layer.weight.shape
-        return cls(
-            fan_in, fan_out, fan_in_fan_out=False, rank=rank, lora_dropout_p=lora_dropout_p, lora_alpha=lora_alpha
-        )
+        return cls(fan_in, fan_out, device=device, dtype=dtype, 
+                   fan_in_fan_out=False, rank=rank, lora_dropout_p=lora_dropout_p, lora_alpha=lora_alpha)
 
     @classmethod
-    def from_conv2d(cls, layer, rank=4, lora_dropout_p=0.0, lora_alpha=1):
-        fan_out, fan_in = layer.weight.view(layer.weight.shape[0], -1).shape
-        return cls(
-            fan_in, fan_out, fan_in_fan_out=False, rank=rank, lora_dropout_p=lora_dropout_p, lora_alpha=lora_alpha
-        )
+    def from_conv2d(cls, layer, rank=4, lora_dropout_p=0.0, lora_alpha=1, device=None, dtype=None):
+        if device is None:
+            device = layer.weight.device
+        if dtype is None:
+            dtype = layer.weight.dtype
+        fan_out, fan_in, _, _ = layer.weight.shape
+        return cls(fan_in * layer.kernel_size[0] * layer.kernel_size[1], fan_out, device=device, dtype=dtype,
+                   fan_in_fan_out=False, rank=rank, lora_dropout_p=lora_dropout_p, lora_alpha=lora_alpha)
 
     @classmethod
-    def from_embedding(cls, layer, rank=4, lora_dropout_p=0.0, lora_alpha=1):
+    def from_embedding(cls, layer, rank=4, lora_dropout_p=0.0, lora_alpha=1, device=None, dtype=None):
+        if device is None:
+            device = layer.weight.device
+        if dtype is None:
+            dtype = layer.weight.dtype
         fan_in, fan_out = layer.weight.shape
         return cls(
-            fan_in, fan_out, fan_in_fan_out=True, rank=rank, lora_dropout_p=lora_dropout_p, lora_alpha=lora_alpha
+            fan_in, fan_out, device=device, dtype=dtype, fan_in_fan_out=True, rank=rank, lora_dropout_p=lora_dropout_p, lora_alpha=lora_alpha
         )
 
 
