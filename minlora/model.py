@@ -23,7 +23,10 @@ class LoRAParametrization(nn.Module):
         nn.init.kaiming_uniform_(self.lora_A, a=math.sqrt(5))
         self.lora_alpha, self.rank = lora_alpha, rank
         self.scaling = lora_alpha / rank
-        self.lora_dropout = nn.Dropout(p=lora_dropout_p) if lora_dropout_p > 0 else lambda x: x
+        self.lora_dropout = (
+            nn.Dropout(p=lora_dropout_p).to(device)
+            if lora_dropout_p > 0 else lambda x: x
+        )
         self.dropout_fn = self._dropout if lora_dropout_p > 0 else lambda x: x
         self.register_buffer("lora_dropout_mask", torch.ones(self.swap((1, fan_in)), dtype=self.lora_A.dtype))
         self.forward_fn = self.lora_forward
